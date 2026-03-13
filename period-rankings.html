@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>피리어드 — 모든 것의 순위</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="./period-data.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #fff; color: #111;
+    }
+    input, select, button { font-family: inherit; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+    ::selection { background: #111; color: #fff; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const PER_PAGE = 10;
+
+// 감독별 편수 집계
+const dirCounts = MOVIES.reduce((acc, m) => {
+  acc[m.dir] = (acc[m.dir] || 0) + 1;
+  return acc;
+}, {});
+
+function App() {
+  const [dir, setDir]         = React.useState("전체");
+  const [page, setPage]       = React.useState(1);
+  const [expanded, setExpanded] = React.useState(null);
+
+  React.useEffect(() => { setPage(1); }, [dir]);
+
+  // 2편 이상 감독만 필터 옵션으로
+  const dirOptions = React.useMemo(() =>
+    ["전체", ...Object.entries(dirCounts)
+      .filter(([, c]) => c >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .map(([d]) => d)
+    ], []);
+
+  const filtered = React.useMemo(() => {
+    if (dir === "전체") return MOVIES;
+    return MOVIES.filter(m => m.dir === dir);
+  }, [dir]);
+
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
+  // 페이지 번호 목록 (현재 페이지 ±2)
+  const pageNums = React.useMemo(() => {
+    const nums = [];
+    for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) nums.push(i);
+    return nums;
+  }, [page, totalPages]);
+
+  return (
+    <div style={{ background: "#fff", minHeight: "100vh" }}>
+
+      {/* ── HEADER ── */}
+      <header style={{ borderBottom: "1px solid #efefef" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto", padding: "52px 24px 0" }}>
+
+          {/* 타이틀 */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.16em", color: "#c8c8c8", textTransform: "uppercase", marginBottom: 10 }}>
+              Period · 피리어드
+            </div>
+            <h1 style={{
+              fontSize: "clamp(30px, 5.5vw, 46px)", fontWeight: 900,
+              letterSpacing: "-0.04em", lineHeight: 1.08, color: "#0a0a0a"
+            }}>
+              모든 것의 순위
+            </h1>
+            <p style={{ marginTop: 10, fontSize: 13, color: "#aaa", fontWeight: 400 }}>
+              영화 {MOVIES.length}편
+            </p>
+          </div>
+
+          {/* 감독 필터 */}
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", paddingBottom: 16 }}>
+            {dirOptions.map(d => (
+              <button key={d} onClick={() => setDir(d)} style={{
+                padding: "5px 12px", borderRadius: 99, fontSize: 12, fontWeight: 500,
+                cursor: "pointer", border: "1.5px solid",
+                borderColor: dir === d ? "#111" : "#e5e5e5",
+                background: dir === d ? "#111" : "#fff",
+                color: dir === d ? "#fff" : "#666",
+                transition: "all 0.1s", letterSpacing: "-0.01em"
+              }}>
+                {d === "전체" ? `전체` : `${d} ${dirCounts[d]}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* ── LIST ── */}
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px 80px" }}>
+
+        {/* 결과 수 */}
+        <div style={{ padding: "14px 0 2px", fontSize: 11.5, color: "#ccc", fontWeight: 500 }}>
+          {dir !== "전체" ? `${dir} · ${filtered.length}편` : `총 ${filtered.length}편`}
+          {totalPages > 1 && ` · ${page} / ${totalPages}`}
+        </div>
+
+        {/* 영화 목록 */}
+        {paged.map((m, idx) => {
+          const isExp = expanded === m.rank;
+          const isTop = m.rank <= 10;
+          return (
+            <div
+              key={m.rank}
+              onClick={() => setExpanded(isExp ? null : m.rank)}
+              style={{
+                borderBottom: "1px solid #f2f2f2",
+                padding: "16px 4px",
+                cursor: "pointer",
+                borderRadius: 4,
+                margin: "0 -4px",
+                transition: "background 0.08s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "#fafafa"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+
+                {/* 순위 */}
+                <div style={{
+                  minWidth: 26, textAlign: "right", flexShrink: 0, paddingTop: 1,
+                  fontVariantNumeric: "tabular-nums",
+                  fontSize: isTop ? 13.5 : 12,
+                  fontWeight: isTop ? 800 : 500,
+                  color: m.rank === 1 ? "#0a0a0a" : m.rank <= 3 ? "#333" : m.rank <= 10 ? "#666" : "#ccc",
+                  letterSpacing: "-0.02em"
+                }}>
+                  {String(m.rank).padStart(2, "0")}
+                </div>
+
+                {/* 콘텐츠 */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+
+                  {/* 제목 + 감독 + 연도 */}
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
+                      <span style={{
+                        fontSize: 15, fontWeight: 700, color: "#0a0a0a",
+                        letterSpacing: "-0.025em"
+                      }}>{m.title}</span>
+                      <span style={{ fontSize: 12, color: "#bbb", fontWeight: 400, letterSpacing: "-0.01em" }}>
+                        {m.dir} · {m.year}
+                      </span>
+                    </div>
+                    {m.rating !== null && (
+                      <span style={{
+                        flexShrink: 0, fontSize: 13.5, fontWeight: 800,
+                        color: "#222", letterSpacing: "-0.03em",
+                        fontVariantNumeric: "tabular-nums"
+                      }}>{m.rating.toFixed(1)}</span>
+                    )}
+                  </div>
+
+                  {/* 메모 */}
+                  {m.note && (
+                    <p style={{
+                      marginTop: 6, fontSize: 13, color: "#555", lineHeight: 1.7,
+                      letterSpacing: "-0.01em",
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: isExp ? "none" : 2,
+                      WebkitBoxOrient: "vertical",
+                    }}>{m.note}</p>
+                  )}
+                  {!isExp && m.note && m.note.length > 80 && (
+                    <span style={{ fontSize: 11, color: "#ccc", marginTop: 2, display: "block" }}>↓</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* ── 페이지네이션 ── */}
+        {totalPages > 1 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, paddingTop: 44 }}>
+            <PagBtn label="‹" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} />
+            {pageNums[0] > 1 && <span style={{ color: "#ddd", fontSize: 12 }}>…</span>}
+            {pageNums.map(p => <PagBtn key={p} label={p} onClick={() => setPage(p)} active={page === p} />)}
+            {pageNums[pageNums.length - 1] < totalPages && <span style={{ color: "#ddd", fontSize: 12 }}>…</span>}
+            <PagBtn label="›" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} />
+          </div>
+        )}
+      </main>
+
+      {/* ── FOOTER ── */}
+      <footer style={{ borderTop: "1px solid #f2f2f2", padding: "28px 24px", textAlign: "center" }}>
+        <div style={{ fontSize: 10.5, color: "#ddd", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+          Period · {new Date().getFullYear()}
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function PagBtn({ label, onClick, active, disabled }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      padding: "7px 12px", border: "1.5px solid",
+      borderColor: active ? "#111" : "#e5e5e5",
+      borderRadius: 8, fontSize: 13,
+      fontWeight: active ? 700 : 400,
+      background: active ? "#111" : "#fff",
+      color: disabled ? "#ddd" : active ? "#fff" : "#444",
+      cursor: disabled ? "default" : "pointer",
+      minWidth: 36, transition: "all 0.1s"
+    }}>{label}</button>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
