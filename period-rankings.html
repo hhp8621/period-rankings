@@ -27,20 +27,19 @@
 <div id="root"></div>
 <script type="text/babel">
 
-const PER_PAGE = 10;
-
 // 감독별 편수 집계
 const dirCounts = MOVIES.reduce((acc, m) => {
   acc[m.dir] = (acc[m.dir] || 0) + 1;
   return acc;
 }, {});
 
-function App() {
-  const [dir, setDir]         = React.useState("전체");
-  const [page, setPage]       = React.useState(1);
-  const [expanded, setExpanded] = React.useState(null);
+function imdbUrl(title, year) {
+  return `https://www.imdb.com/find/?q=${encodeURIComponent(title + ' ' + year)}&s=tt&ttype=ft`;
+}
 
-  React.useEffect(() => { setPage(1); }, [dir]);
+function App() {
+  const [dir, setDir]           = React.useState("전체");
+  const [expanded, setExpanded] = React.useState(null);
 
   // 2편 이상 감독만 필터 옵션으로
   const dirOptions = React.useMemo(() =>
@@ -54,16 +53,6 @@ function App() {
     if (dir === "전체") return MOVIES;
     return MOVIES.filter(m => m.dir === dir);
   }, [dir]);
-
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-  // 페이지 번호 목록 (현재 페이지 ±2)
-  const pageNums = React.useMemo(() => {
-    const nums = [];
-    for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) nums.push(i);
-    return nums;
-  }, [page, totalPages]);
 
   return (
     <div style={{ background: "#fff", minHeight: "100vh" }}>
@@ -112,11 +101,10 @@ function App() {
         {/* 결과 수 */}
         <div style={{ padding: "14px 0 2px", fontSize: 11.5, color: "#ccc", fontWeight: 500 }}>
           {dir !== "전체" ? `${dir} · ${filtered.length}편` : `총 ${filtered.length}편`}
-          {totalPages > 1 && ` · ${page} / ${totalPages}`}
         </div>
 
         {/* 영화 목록 */}
-        {paged.map((m, idx) => {
+        {filtered.map((m) => {
           const isExp = expanded === m.rank;
           const isTop = m.rank <= 10;
           return (
@@ -161,6 +149,18 @@ function App() {
                       <span style={{ fontSize: 12, color: "#bbb", fontWeight: 400, letterSpacing: "-0.01em" }}>
                         {m.dir} · {m.year}
                       </span>
+                      <a
+                        href={imdbUrl(m.title, m.year)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          fontSize: 10.5, fontWeight: 700, color: "#c8a84b",
+                          letterSpacing: "0.04em", textDecoration: "none",
+                          background: "#fdf8ec", padding: "1px 6px",
+                          borderRadius: 3, lineHeight: 1.6,
+                        }}
+                      >IMDb</a>
                     </div>
                     {m.rating !== null && (
                       <span style={{
@@ -191,16 +191,6 @@ function App() {
           );
         })}
 
-        {/* ── 페이지네이션 ── */}
-        {totalPages > 1 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, paddingTop: 44 }}>
-            <PagBtn label="‹" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} />
-            {pageNums[0] > 1 && <span style={{ color: "#ddd", fontSize: 12 }}>…</span>}
-            {pageNums.map(p => <PagBtn key={p} label={p} onClick={() => setPage(p)} active={page === p} />)}
-            {pageNums[pageNums.length - 1] < totalPages && <span style={{ color: "#ddd", fontSize: 12 }}>…</span>}
-            <PagBtn label="›" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} />
-          </div>
-        )}
       </main>
 
       {/* ── FOOTER ── */}
@@ -213,20 +203,6 @@ function App() {
   );
 }
 
-function PagBtn({ label, onClick, active, disabled }) {
-  return (
-    <button onClick={onClick} disabled={disabled} style={{
-      padding: "7px 12px", border: "1.5px solid",
-      borderColor: active ? "#111" : "#e5e5e5",
-      borderRadius: 8, fontSize: 13,
-      fontWeight: active ? 700 : 400,
-      background: active ? "#111" : "#fff",
-      color: disabled ? "#ddd" : active ? "#fff" : "#444",
-      cursor: disabled ? "default" : "pointer",
-      minWidth: 36, transition: "all 0.1s"
-    }}>{label}</button>
-  );
-}
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
